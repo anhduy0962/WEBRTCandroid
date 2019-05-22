@@ -1,0 +1,313 @@
+@charset "UTF-8";
+/* CSS Document */
+
+/* =========================================================
+　サイト内共通スタイル
+========================================================= */
+
+body {
+	font-family: 游ゴシック体, 'Yu Gothic', YuGothic, 'ヒラギノ角ゴシック Pro', 'Hiragino Kaku Gothic Pro', メイリオ, Meiryo, Osaka, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
+	background-color : #cccccc;
+	text-align : center;
+	margin: 0;
+	padding: 0;
+}
+
+header{
+	background-color : #333333;
+	text-align : center;
+	padding : 10px 0;
+	margin : 0;
+	box-sizing: border-box;
+}
+
+.header-wrap{
+	width: 700px;
+	margin: 0 auto;
+	text-align: right;
+	position : relative;
+}
+.header-wrap h1{
+	text-indent: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	background-image:url(../images/logo.png);
+	background-size: cover;
+	width : 81px;
+	height : 90px;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	margin: auto 0;
+}
+.phone-button{
+	display: inline-block;
+	width : 75px;
+	height: 75px;
+	color : #fff;
+	padding-top : 72px;
+	border: none;
+	outline: none;
+}
+#connect{
+	background:url(../images/connect.png) top center no-repeat;
+	background-size:100% auto;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 150px;
+	margin: auto 0;
+}
+
+#hangup{
+	background:url(../images/hangup.png) top center no-repeat;
+	background-size: 100% auto;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 240px;
+	margin: auto 0;
+}
+
+.address-box {
+	width: 270px;
+	margin: 5px 0 0 auto;
+	font-size: 0;
+}
+.address-box dt{
+	display: inline-block;
+	width: calc(30% - 10px);
+	height: 25px;
+	color: #fff;
+	font-size: 13px;
+	background: #000;
+	margin: 0 10px 5px 0;
+	line-height: 25px;
+	vertical-align: top;
+	text-align: center;
+}
+.address-box dd{
+	display: inline-block;
+	width: 70%;
+	height: 25px;
+	margin: 0 0 5px 0;
+	position: relative;
+}
+.address-box input[type="text"]{
+	width: 100%;
+	height: 100%;
+	padding: 5px;
+	border: none;
+	box-sizing: border-box;
+}
+.address-box input[type="button"]{
+	position: absolute;
+	right: 0;
+	background: #e78e3b;
+	border: none;
+	color: #fff;
+	height: 100%;
+}
+.address-box input[type="button"]:hover{
+	background: #e74f3b;
+}
+main{
+	background:url("../images/back.png") top center repeat-y;
+	background-size: 100% auto;
+	width: 700px;
+	height : 390px;
+	margin: 0 auto;
+	padding : 0;
+	position: relative;
+	display: block;
+}
+
+
+.video-start{
+	background:url(../images/start.png)top center no-repeat;
+	float : left ;
+	display : block;
+	width : 53px;
+	height : 52px;
+	background-size:53px 52px;
+	color : #ffffff;
+	margin: 10px 10px 0 60px;
+}
+
+button.video-start:hover,button.video-start:active{
+	background:url(../images/start.png)top center no-repeat;;
+	float : left ;
+	display : block;
+	width : 53px;
+	height : 52px;
+	background-size:53px 52px;
+	color : #ffffff;
+	
+}
+.video-stop{
+	background:url(../images/stop.png)top center no-repeat;
+	float : left ;
+	display : block;
+	width : 53px;
+	height : 52px;
+	background-size:53px 52px;
+	color : #ffffff;
+	margin: 10px 10px 0 0;
+
+}
+
+button.video-stop:hover,button.video-stop:active{
+	background:url(../images/stop.png)top center no-repeat;
+	float : left ;
+	display : block;
+	width : 53px;
+	height : 52px;
+	background-size:53px 52px;
+	color : #ffffff;
+}
+
+.clear{
+	clear : both;
+}
+
+.my{
+	width: calc(100% - 20px);
+	max-width: 180px;
+	height:135px; 
+	border: 1px solid black;
+	margin: 0;
+	position: absolute;
+	top : 160px;
+	left : 60px;
+	background:url(../images/connecting.png) bottom center no-repeat;
+	background-size: calc(100 / 180 * 100%) auto;
+	background-color: #efeeee;
+}
+
+.you{
+	width: calc(100% - 20px);
+	max-width:320px; 
+	height: 240px; 
+	border: 1px solid black;
+	margin : 0;
+	position: absolute;
+	top : 35px;
+	right : 60px;
+	background:url(../images/connecting.png)bottom center no-repeat;
+	background-size:calc(223 / 320 * 100%) auto;
+	background-color: #efeeee;
+}
+
+.weiting{
+	position: absolute;
+	bottom: 130px;
+	right: 175px;
+	font-weight : bold;
+	color : #fff;
+	font-size : 1.2em;
+}
+
+
+footer{
+	background-color : #333333;
+	height : 67px;
+}
+footer .footermain{
+	width: 700px;
+	margin: 0 auto;
+	padding :0;
+	position : relative;
+}
+
+.logos{
+	position: absolute;
+	right : 40px;
+	top : 20px;
+	padding: 0;
+	overflow: hidden;
+	text-indent: 100%;
+	white-space: nowrap;
+	background-image:url(../images/logos.png);
+	display : block;
+	width : 30px;
+	height : 36px;
+	background-size:30px 36px;
+}
+
+div.var{
+	color : #fff;
+}
+
+textarea{
+	width: 700px;
+	height: 5em;
+	box-sizing: border-box;
+}
+
+@media screen and (max-width:736px){
+	.header-wrap{
+		width: 100%;
+		text-align: center;
+		padding: 10px 0;
+	}
+	.header-wrap h1{
+		position: static;
+		width: 40px;
+		height: 46px;
+		display: inline-block;
+	}
+	div.var{
+		margin: 20px 0;
+	}
+	.phone-button{
+		width: 50px;
+		height: 50px;
+		padding-top: 50px;
+		font-size: .5em;
+		white-space: nowrap;
+	}
+	#connect,#hangup{
+		position: static;
+		margin: 0;
+	}
+	.address-box{
+		margin: 20px auto 0;
+	}
+
+	main{
+		width: 100%;
+	}
+	.video-start{
+		margin-left: 10px;
+	}
+	.my{
+		max-width: 130px;
+		height: 90px;
+		left: auto;
+		top: 10px;
+		right: 10px;
+	}
+	.you{
+		top: auto;
+		bottom: 30px;
+		left: 0;
+		right: 0;
+		margin: 0 auto;	
+	}
+
+	.weiting{
+		position: absolute;
+		bottom: 50px;
+		left: 0;
+		right: 0;
+		margin: 0 auto;
+	}
+
+	footer .footermain{
+		width: 100%;
+	}
+
+	textarea{
+		width: 100%;
+	}
+}

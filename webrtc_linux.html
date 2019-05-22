@@ -1,0 +1,718 @@
+<!-- ver1.1.1 IP取得ボタン設置と体裁の修正-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebRTC 1 to 1 signaling</title>  
+  <link rel="stylesheet" href="common/css/style.css">
+</head>
+<body>
+<header>
+  <section class="header-wrap">
+    <h1>WebRTC</h1>
+    <img src="common/images/sitename.png">
+    <button type="button" onclick="readSokect(connect);" class="phone-button" id="connect">Connect</button>
+    <button type="button" onclick="hangUp();" class="phone-button" id="hangup">Hang Up</button>
+    <div class= "var">ver1.1.5</div>
+    <dl class="address-box">
+      <dt>FQDN</dt>
+      <dd><input type="text" id="text-for-fqdnadress"></dd>
+      <dt>IP</dt>
+      <dd><input type="text" id="text-for-ipadress"><input type="button" value="Get IP" onclick="getip();"></dd>
+    </dl>
+  </section><!--/header-wrap-->
+</header>
+
+
+  <main>
+      <button type="button" onclick="startVideo();" class="video-start"> </button>
+      <button type="button" onclick="stopVideo();" class="video-stop"> </button>
+      <div class="clear">
+          <video id="local-video" autoplay class="my"></video>
+          <video id="remote-video" autoplay class="you"></video>
+          <div id="weiting" class="weiting"></div>
+       </div>
+       <div id="ipAdress" hidden></div>
+  </main>
+<footer>
+    <section class="footermain">
+        <div class="logos">WebRTC</div>
+    </section><!--/footermain-->
+</footer>
+
+  <p>
+   SDP to send:<br />
+   <textarea id="text-for-send-sdp" disabled="1">SDP to send</textarea>
+  </p>
+  <p>
+   SDP to receive:<br />
+   <textarea id="text-for-receive-sdp"></textarea><br />
+   <button type="button" onclick="onSDP();">Receive SDP</button>
+  </p>
+  
+  <p>
+   ICE Candidate to send:<br />
+   <textarea id="text-for-send-ice" disabled="1">ICE Candidate to send</textarea>
+  </p>
+  <p>  
+   ICE Candidates to receive:<br />
+   <textarea id="text-for-receive-ice"></textarea><br />
+   <button type="button" onclick="onICE();">Receive ICE Candidates</button>
+  </p>
+  
+  <!---- socket ------>
+  <script id="socketScript" src="http://localhost:9001/socket.io/socket.io.js"></script>
+  
+  <script>
+  var localVideo = document.getElementById('local-video');
+  var remoteVideo = document.getElementById('remote-video');
+  var localStream = null;
+  var peerConnection = null;
+  var peerStarted = false;
+  var mediaConstraints = {'mandatory': {'OfferToReceiveAudio':false, 'OfferToReceiveVideo':true }};
+
+  // --- prefix -----
+  navigator.getUserMedia  = navigator.getUserMedia    || navigator.webkitGetUserMedia ||
+                            navigator.mozGetUserMedia || navigator.msGetUserMedia;
+  RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+  RTCSessionDescription = window.RTCSessionDescription || window.webkitRTCSessionDescription || window.mozRTCSessionDescription;
+  
+  // ---- socket ------
+  // create socket
+  var socketReady = false;
+  var port = 9001;
+  var socket = io.connect('http://localhost:' + port + '/');
+  //var socket;
+  // socket: channel connected
+  //socket.on('connect', onOpened)
+  //      .on('message', onMessage);
+  socket.on('connect', onOpened)
+        .on('message', onMessage)
+        .on('ipRes',onIPRes)
+        .on('ipSend',onIPSend)
+        .on('disconnected',onDisconnect)
+        .on('fqdnCheck',onFqdnCheck)
+        .on('ipGet',onIPGet)
+        .on('androidServerCheck',onAndroidServerCheck);
+
+  var ipbl = false;
+  var ipAdress = '';
+  var connectbl = false;
+  var disconnectbl = false;
+  var hangUpbl = false;
+  var androidConnect = false;
+  
+  function varClear()
+  {
+    ipbl = false;
+    connectbl = false;
+    disconnectbl = false;
+    
+    //localhostへ再接続
+    socket = io.connect('http://localhost:' + port + '/');
+
+    socket.on('connect', onOpened)
+      .on('message', onMessage)
+      .on('ipRes',onIPRes)
+      .on('ipSend',onIPSend)
+      .on('disconnected',onDisconnect)
+      .on('fqdnCheck',onFqdnCheck)
+      .on('ipGet',onIPGet)
+      .on('androidServerCheck',onAndroidServerCheck);
+        
+    socket.connect();
+    
+    androidConnect = false;
+  }
+  
+  // ----------------- handshake --------------
+  var textForSendSDP = document.getElementById('text-for-send-sdp');
+  var textForSendICE = document.getElementById('text-for-send-ice');
+  var textToReceiveSDP = document.getElementById('text-for-receive-sdp');
+  var textToReceiveICE = document.getElementById('text-for-receive-ice');
+  
+  var textToIPADRESS = document.getElementById('text-for-ipadress');
+  //ver1.1.1 追加
+  var textToFQDN = document.getElementById('text-for-fqdnadress');
+  //ver1.1.1 追加終了
+  var hiddenIPADRESS = document.getElementById('ipAdress');
+  
+  var iceSeparator = '------ ICE Candidate -------';
+  var CR = String.fromCharCode(13);
+  
+  window.onload = onLoad;
+
+  function onLoad() {
+    console.log("onLoad");
+    socket.emit('ipGet','');
+  }
+  
+  function onIPGet(data)
+  {
+    console.log('ip:' +data);
+    var myFqdn = data;
+    //ver1.1.1 変更開始
+    //textToIPADRESS.value = myFqdn;
+    textToFQDN.value = myFqdn;
+    //ver1.1.1 変更終了
+  }
+  
+  function onOpened(evt) {
+    console.log('socket opened.');
+    socketReady = true;
+    
+    if(connectbl)
+    {
+      sendOffer();
+      peerStarted = true;
+      
+      socket.emit('ipSend','');
+    }
+  }
+
+  // socket: accept connection request
+  function onMessage(evt) {
+    if (evt.type === 'offer') {
+      console.log("Received offer, set offer, sending answer....");
+      onOffer(evt);	  
+    } else if (evt.type === 'answer' && peerStarted) {
+      console.log('Received answer, settinng answer SDP');
+	  onAnswer(evt);
+    } else if (evt.type === 'candidate' && peerStarted) {
+      console.log('Received ICE candidate...');
+	  onCandidate(evt);
+    } else if (evt.type === 'user dissconnected' && peerStarted) {
+      console.log("disconnected");
+      stop();
+    }
+  }
+
+  function onIPSend(data)
+  {
+    data = data.replace('::ffff:','');
+    console.log(data);
+    ipAdress = data;
+  }
+  
+  function onIPRes(bl) {
+    console.log(bl);
+    ipbl = bl;
+  }
+  
+  function onDisconnect(bl)
+  {
+    console.log("onDisconnect:"+bl);
+    disconnectbl = bl;
+     
+    if(bl)
+    {
+      hangUp();
+    }
+  }
+  
+  //nodeからfqdnをIPアドレスに変換できるかチェックをした結果が返ってくる
+  function onFqdnCheck(data)
+  {
+    var done = false;
+    
+    if(data)
+    {
+      //IPアドレスに変換出来た時
+      
+      hiddenIPADRESS.innerText = data;
+	  textToIPADRESS.value = data;
+      /*
+      //接続先にsocket.io.jsが存在しているか調べる
+      var urlRes = checkUrl('http://' + hiddenIPADRESS.innerText + ':' + port + '/socket.io/socket.io.js');
+      
+      if(urlRes)
+      {
+        //socket.ioが存在していた場合接続を試みる
+        var script = document.createElement('script');
+        script.src = 'http://' + hiddenIPADRESS.innerText + ':' + port + '/socket.io/socket.io.js';
+        document.body.appendChild(script);
+    
+        // Attach handlers for all browsers
+        script.onload = script.onreadystatechange = function() {
+            if ( !done && (!this.readyState ||
+                this.readyState === "loaded" || this.readyState === "complete") ) {
+                done = true;
+                connect();
+            }
+        };
+      }
+      else
+      {
+        //socket.ioがなかったらAndroidの可能性あり
+        //SocketServerを調べてみる
+        socket.emit('androidServerCheck', hiddenIPADRESS.innerText);
+        //結果が戻ってきたらonAndroidServerCheckに処理が渡る
+      }
+      */
+    }
+    else
+    {
+      alert('入力されたアドレスが正しくありません。');
+      hangUp();
+    }
+  }
+  
+  //nodeからAndroidのSocketServerに接続した結果が戻ってくる
+  function onAndroidServerCheck(bl)
+  {
+    console.log("onAndroidServerCheck:" + bl);
+    
+    if(bl)
+    {
+      //サーバが存在している→相手に接続させる(待機)
+      androidConnect = true;
+      socket.connect();
+      //connect();
+    }
+    else
+    {
+      //alert('入力されたアドレスが正しくありません。');
+      //hangUp();
+      connect();
+    }
+  }
+  
+  function onSDP() {
+    var text = textToReceiveSDP.value;
+	var evt = JSON.parse(text);
+	if (peerConnection) {
+	  onAnswer(evt);
+	}
+	else {
+	  onOffer(evt);
+	}
+	
+	textToReceiveSDP.value ="";
+  }  
+  
+  //--- multi ICE candidate ---
+  function onICE() {
+    var text = textToReceiveICE.value;
+	var arr = text.split(iceSeparator);
+	for (var i = 1, len = arr.length; i < len; i++) {
+      var evt = JSON.parse(arr[i]);
+	  onCandidate(evt);
+    }
+
+	textToReceiveICE.value ="";
+  }
+  
+  
+  function onOffer(evt) {
+    console.log("Received offer...")
+	console.log(evt);
+    setOffer(evt);
+	sendAnswer(evt);
+	peerStarted = true;  // ++
+  }
+  
+  function onAnswer(evt) {
+    console.log("Received Answer...")
+	console.log(evt);
+	setAnswer(evt);
+  }
+  
+  function onCandidate(evt) {
+    var candidate = new RTCIceCandidate({sdpMLineIndex:evt.sdpMLineIndex, sdpMid:evt.sdpMid, candidate:evt.candidate});
+    console.log("Received Candidate...")
+	console.log(candidate);
+    peerConnection.addIceCandidate(candidate);
+  }
+
+  function sendSDP(sdp) {
+    var text = JSON.stringify(sdp);
+	console.log("---sending sdp text ---");
+	console.log(text);
+	textForSendSDP.value = text;
+	
+	// send via socket
+	socket.json.send(sdp);
+  }
+  
+  function sendCandidate(candidate) {
+    var text = JSON.stringify(candidate);
+	console.log("---sending candidate text ---");
+	console.log(text);
+	textForSendICE.value = (textForSendICE.value + CR + iceSeparator + CR + text + CR);
+	textForSendICE.scrollTop = textForSendICE.scrollHeight;
+	
+	// send via socket
+	socket.json.send(candidate);
+  }
+  
+  // ---------------------- video handling -----------------------
+  // start local video
+  function startVideo() {
+	navigator.getUserMedia({video: true, audio: false},
+    function (stream) { // success
+      localStream = stream;
+      localVideo.src = window.URL.createObjectURL(stream);
+      localVideo.play();
+	  localVideo.volume = 0;
+    },
+    function (error) { // error
+      console.error('An error occurred: [CODE ' + error.code + ']');
+      return;
+    }
+	);
+  }
+
+  // stop local video
+  function stopVideo() {
+    localVideo.src = "";
+    localStream.stop();
+  }
+
+  // ---------------------- connection handling -----------------------
+  function prepareNewConnection() {
+    var pc_config = {"iceServers":[]};
+    var peer = null;
+    try {
+      peer = new RTCPeerConnection(pc_config);
+    } catch (e) {
+      console.log("Failed to create peerConnection, exception: " + e.message);
+    }
+
+    // send any ice candidates to the other peer
+    peer.onicecandidate = function (evt) {
+      if (evt.candidate) {
+        console.log(evt.candidate);
+        sendCandidate({type: "candidate", 
+                          sdpMLineIndex: evt.candidate.sdpMLineIndex,
+                          sdpMid: evt.candidate.sdpMid,
+                          candidate: evt.candidate.candidate}
+		);
+      } else {
+        console.log("End of candidates. ------------------- phase=" + evt.eventPhase);
+      }
+    };
+
+    console.log('Adding local stream...');
+    peer.addStream(localStream);
+
+    peer.addEventListener("addstream", onRemoteStreamAdded, false);
+    peer.addEventListener("removestream", onRemoteStreamRemoved, false)
+
+    // when remote adds a stream, hand it on to the local video element
+    function onRemoteStreamAdded(event) {
+      console.log("Added remote stream");
+      if(androidConnect)
+      {
+        if(connectbl)
+        {
+          //var res = confirm(ipAdress + 'と接続してよろしいですか？');
+          //if(res){
+	        remoteVideo.src = window.URL.createObjectURL(event.stream);
+	        document.getElementById("weiting").textContent="";
+            socket.emit('ipRes',true);
+          //}
+          //else
+          //{
+          //  socket.emit('ipRes',false);
+          //}
+        }
+        else
+        {
+          //if(ipbl)
+          //{
+            remoteVideo.src = window.URL.createObjectURL(event.stream);
+            
+            document.getElementById("weiting").textContent="";
+          //}
+          //else
+          //{
+          //  alert('接続が拒否されました');
+          //  hangUp();
+          //}
+        }
+      }
+      else
+      {
+        if(connectbl)
+        {
+          //if(ipbl)
+          //{
+            remoteVideo.src = window.URL.createObjectURL(event.stream);
+            document.getElementById("weiting").textContent="";
+          //}
+          //else
+          //{
+          //  alert('接続が拒否されました');
+          //  hangUp();
+          //}
+        }
+        else
+        {
+           //var res = confirm(ipAdress + 'と接続してよろしいですか？');
+           //if(res)
+           //{
+             remoteVideo.src = window.URL.createObjectURL(event.stream);
+             document.getElementById("weiting").textContent="";
+             socket.emit('ipRes',true);
+           //}
+           //else
+           //{
+           //  socket.emit('ipRes',false);
+           //}
+        }
+      }
+    }
+
+    // when remote removes a stream, remove it from the local video element
+    function onRemoteStreamRemoved(event) {
+      console.log("Remove remote stream");
+      remoteVideo.src = "";
+    }
+
+    return peer;
+  }
+
+  function sendOffer() {
+    peerConnection = prepareNewConnection();
+    peerConnection.createOffer(function (sessionDescription) { // in case of success
+      peerConnection.setLocalDescription(sessionDescription);
+      console.log("Sending: SDP");
+      console.log(sessionDescription);
+      sendSDP(sessionDescription);
+    }, function () { // in case of error
+      console.log("Create Offer failed");
+    }, mediaConstraints);
+  }
+
+  function setOffer(evt) {
+    if (peerConnection) {
+	  console.error('peerConnection alreay exist!');
+	}
+    peerConnection = prepareNewConnection();
+    peerConnection.setRemoteDescription(new RTCSessionDescription(evt));
+  }
+  
+  function sendAnswer(evt) {
+    console.log('sending Answer. Creating remote session description...' );
+	if (! peerConnection) {
+	  console.error('peerConnection NOT exist!');
+	  return;
+	}
+	
+    peerConnection.createAnswer(function (sessionDescription) { // in case of success
+      peerConnection.setLocalDescription(sessionDescription);
+      console.log("Sending: SDP");
+      console.log(sessionDescription);
+      sendSDP(sessionDescription);
+    }, function () { // in case of error
+      console.log("Create Answer failed");
+    }, mediaConstraints);
+  }
+
+  function setAnswer(evt) {
+    if (! peerConnection) {
+	  console.error('peerConnection NOT exist!');
+	  return;
+	}
+	peerConnection.setRemoteDescription(new RTCSessionDescription(evt));
+  }
+  
+  // -------- handling user UI event -----
+  // start the connection upon user request
+  var connect = function () {
+    //if (!peerStarted && localStream && socketReady) { // **
+	if (!peerStarted && localStream) { // --
+
+      socket = io.connect('http://' + hiddenIPADRESS.innerText + ':' + port + '/');
+
+      socket.on('connect', onOpened)
+        .on('message', onMessage)
+        .on('ipRes',onIPRes)
+        .on('ipSend',onIPSend)
+        .on('disconnected',onDisconnect)
+        .on('fqdnCheck',onFqdnCheck);
+
+      console.log("hangUpbl:" + hangUpbl);
+      
+      if(hangUpbl)
+      {
+        // 再接続
+        socket.connect();
+        
+        hangUpbl = false;
+      }
+      
+      connectbl = true;
+      
+    } else {
+      alert("Local stream not running yet - try again.");
+    }
+  }
+
+  function readSokect(callback) {
+    var done = false;
+    
+    document.getElementById("weiting").textContent="接続待機中";
+    
+    //true:正しいIPアドレスが入力された
+    var res = ipcheck();
+    
+    //localStorage.setItem('myFqdn', textToIPADRESS.value);
+    //socket.emit('ipSet',textToIPADRESS.value);
+    socket.emit('ipSet',textToFQDN.value);
+
+    //ver1.1.1 変更開始
+    //ipが入力された
+    if(res)
+    {
+      hiddenIPADRESS.innerText =  textToIPADRESS.value;
+      
+      //接続先にsocket.io.jsが存在しているか調べる
+      var urlRes = checkUrl('http://' + hiddenIPADRESS.innerText + ':' + port + '/socket.io/socket.io.js');
+      
+      //socket.ioが存在していた場合接続を試みる
+      if(urlRes)
+      {
+        var script = document.createElement('script');
+        script.src = 'http://' + textToIPADRESS.value + ':' + port + '/socket.io/socket.io.js';
+        document.body.appendChild(script);
+    
+        // Attach handlers for all browsers
+        script.onload = script.onreadystatechange = function() {
+            if ( !done && (!this.readyState ||
+                this.readyState === "loaded" || this.readyState === "complete") ) {
+                done = true;
+                callback();
+            }
+        };
+      }
+      else
+      {
+        //socket.ioがなかったらAndroidの可能性あり
+        //SocketServerを調べてみる
+        socket.emit('androidServerCheck', hiddenIPADRESS.innerText);
+        //結果が戻ってきたらonAndroidServerCheckに処理が渡る
+      }
+    }
+    else
+    {
+       console.log("入力されたIPアドレスが正しくありません");
+    }
+    /*
+    if(res)
+    {
+      //ipが入力された
+      hiddenIPADRESS.innerText =  textToIPADRESS.value;
+      
+      //接続先にsocket.io.jsが存在しているか調べる
+      var urlRes = checkUrl('http://' + hiddenIPADRESS.innerText + ':' + port + '/socket.io/socket.io.js');
+      
+      //socket.ioが存在していた場合接続を試みる
+      if(urlRes)
+      {
+        var script = document.createElement('script');
+        script.src = 'http://' + textToIPADRESS.value + ':' + port + '/socket.io/socket.io.js';
+        document.body.appendChild(script);
+    
+        // Attach handlers for all browsers
+        script.onload = script.onreadystatechange = function() {
+            if ( !done && (!this.readyState ||
+                this.readyState === "loaded" || this.readyState === "complete") ) {
+                done = true;
+                callback();
+            }
+        };
+      }
+      else
+      {
+        //socket.ioがなかったらAndroidの可能性あり
+        //SocketServerを調べてみる
+        socket.emit('androidServerCheck', hiddenIPADRESS.innerText);
+        //結果が戻ってきたらonAndroidServerCheckに処理が渡る
+      }
+      
+    }
+    else
+    {
+      //fqdnが入力された
+      //Node.jsでfqdnからipアドレスを検索
+      socket.emit('fqdnCheck',textToIPADRESS.value);
+      
+      //結果が戻ってきたらonFqdnCheckに処理が渡る
+    }
+    */
+      //ver1.1.1 変更終了
+  }
+
+  //ver1.1.1 追加
+  function getip()
+  {
+      //fqdnが入力された
+      //Node.jsでfqdnからipアドレスを検索
+      socket.emit('fqdnCheck',textToFQDN.value);
+      
+      //結果が戻ってきたらonFqdnCheckに処理が渡る
+  }
+  //ver1.1.1 追加終了
+  // stop the connection upon user request
+  function hangUp() {
+    console.log("Hang up.");
+    
+    hangUpbl = true;
+    
+    stop();
+  }
+
+  function stop() {
+    if(peerConnection)
+    {
+      peerConnection.close();
+    }
+    peerConnection = null;
+    peerStarted = false;
+    
+    //if(!disconnectbl)
+    //{
+      socket.emit('disconnected',true);
+    //}
+    
+    document.getElementById("remote-video").src = "";
+    document.getElementById("weiting").textContent="";
+    
+    socket.disconnect();
+    
+    varClear();
+  }
+
+  function checkUrl(url) {
+        var request = false;
+        if (window.XMLHttpRequest) {
+                request = new XMLHttpRequest;
+        } else if (window.ActiveXObject) {
+                request = new ActiveXObject("Microsoft.XMLHttp");
+        }
+
+        if (request) {
+                request.open("GET", url);
+                if (request.status == 200) { return true; }
+        }
+
+        return false;
+  }
+
+  function ipcheck() {
+    var res = false;
+    txt = textToIPADRESS.value; 
+    data = txt.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/); 
+    if (!data) {
+       res = false;
+    }
+    else
+    {
+      res = true;
+    } 
+    
+    return res;
+  }
+  </script>
+</body>
+</html>
