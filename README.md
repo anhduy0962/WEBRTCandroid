@@ -1,2 +1,15 @@
-# WEBRTCandroid
-http://192.168.11.10:5555/#/room/1f0bd7ec-8e2f-4dca-a266-a60db0125a48
+cd WEBRTCandroid
+
+apt-get update
+
+sudo apt-get install nodejs
+
+sudo npm install
+
+npm init
+
+npm install socket.io 
+
+node signaling.js
+
+node server.js
