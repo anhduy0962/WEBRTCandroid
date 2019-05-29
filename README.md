@@ -2,6 +2,8 @@ cd WEBRTCandroid
 
 apt-get update
 
+npm install express --save
+
 sudo apt-get install nodejs
 
 sudo npm install
